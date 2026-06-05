@@ -66,7 +66,7 @@ resource "aws_security_group" "monitoring" {
   }
 
   egress {
-    description = "Sortant : scraping + S3 + mises à jour via NAT"
+    description = "Sortant : scraping + S3 + mises a jour via NAT"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
