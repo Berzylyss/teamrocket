@@ -129,6 +129,10 @@ module "monitoring" {
   instance_type         = var.instance_type
   region                = var.region
   s3_bucket_name        = module.storage.bucket_name
+
+  depends_on = [
+    aws_s3_object.ansible_extra_vars,
+  ]
 }
 
 # ── Upload des fichiers Ansible monitoring vers S3 ────────────────────────────

@@ -1,0 +1,48 @@
+#!/bin/bash
+# Script de bootstrap : installe Ansible + dépendances, télécharge les fichiers
+# depuis S3, puis lance le playbook monitoring.
+set -euo pipefail
+exec > /var/log/monitoring-bootstrap.log 2>&1
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] === Démarrage du bootstrap monitoring ==="
+
+hostnamectl set-hostname monitoring
+
+# ── Packages ──────────────────────────────────────────────────────────────────
+dnf update -y
+# python3-firewall requis par le rôle monitoring (gestion firewalld via Ansible)
+dnf install -y ansible-core python3-firewall
+
+# ── Collection ansible.posix (firewalld, etc.) ────────────────────────────────
+ansible-galaxy collection install ansible.posix
+
+# ── Téléchargement des fichiers Ansible depuis S3 ────────────────────────────
+ANSIBLE_DIR=/opt/ansible
+mkdir -p $$ANSIBLE_DIR
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sync depuis s3://${s3_bucket_name}/ansible/"
+aws s3 sync s3://${s3_bucket_name}/ansible/ $$ANSIBLE_DIR/ --region ${region}
+
+# ── Copie explicite de extra_vars.yml (protection contre race condition) ──────
+# extra_vars.yml est généré dynamiquement par Terraform (content=templatefile)
+# et peut arriver dans S3 après le sync — on le récupère séparément avec retry.
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Récupération de extra_vars.yml..."
+for i in 1 2 3 4 5; do
+  aws s3 cp s3://${s3_bucket_name}/ansible/extra_vars.yml $$ANSIBLE_DIR/extra_vars.yml \
+    --region ${region} && break
+  echo "  Tentative $$i/5 échouée, nouvelle tentative dans 20s..."
+  sleep 20
+done
+
+chown -R ec2-user:ec2-user $$ANSIBLE_DIR
+
+# ── Lancement du playbook (limit: monitoring) ─────────────────────────────────
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Lancement d'ansible-playbook..."
+cd $$ANSIBLE_DIR
+ansible-playbook site.yml \
+  --limit monitoring \
+  --extra-vars @extra_vars.yml \
+  -i inventory.ini \
+  2>&1 | tee /var/log/ansible-monitoring.log
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] === Bootstrap terminé ==="
