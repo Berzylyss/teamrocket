@@ -42,3 +42,17 @@
     name: vsftpd
     state: started
     enabled: true
+
+- name: Ouvrir port FTP control dans firewalld
+  ansible.posix.firewalld:
+    port: "21/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+
+- name: Ouvrir plage passive FTP dans firewalld
+  ansible.posix.firewalld:
+    port: "21100-21110/tcp"
+    permanent: true
+    state: enabled
+    immediate: true

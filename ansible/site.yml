@@ -3,17 +3,17 @@
   hosts: web
   become: true
   roles:
+    - hardening
     - webserver
     - node_exporter
-    - hardening
 
 - name: Configurer le serveur FTP (vsftpd)
   hosts: ftp
   become: true
   roles:
+    - hardening
     - ftpserver
     - node_exporter
-    - hardening
 
 - name: Déployer la supervision (Prometheus + Grafana)
   hosts: monitoring

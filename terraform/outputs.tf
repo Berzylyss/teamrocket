@@ -57,3 +57,13 @@ output "ssh_ansible_via_bastion" {
   description = "Commande SSH vers l'Ansible master via bastion"
   value       = "ssh -i ansible/tpfinal.pem -J ec2-user@${module.bastion.public_ip} ec2-user@${module.ansible.private_ip}"
 }
+
+output "monitoring_private_ip" {
+  description = "IP privee du serveur monitoring (Prometheus + Grafana)"
+  value       = module.monitoring.monitoring_private_ip
+}
+
+output "grafana_tunnel" {
+  description = "Tunnel SSH pour acceder a Grafana (puis http://localhost:3000)"
+  value       = "ssh -i ansible/tpfinal.pem -L 3000:${module.monitoring.monitoring_private_ip}:3000 -L 9090:${module.monitoring.monitoring_private_ip}:9090 ec2-user@${module.bastion.public_ip}"
+}
