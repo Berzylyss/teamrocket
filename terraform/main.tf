@@ -1,0 +1,151 @@
+# ── Réseau ────────────────────────────────────────────────────────────────────
+module "network" {
+  source  = "./modules/network"
+  project = var.project
+  region  = var.region
+}
+
+# ── Bastion (SSH-only, subnet public) ─────────────────────────────────────────
+module "bastion" {
+  source           = "./modules/bastion"
+  project          = var.project
+  vpc_id           = module.network.vpc_id
+  public_subnet_id = module.network.public_subnet_1_id
+  my_ip            = var.my_ip
+  key_name         = aws_key_pair.tpfinal.key_name
+  instance_type    = var.instance_type
+}
+
+# ── Serveurs web + ALB HTTPS (subnet privé web) ───────────────────────────────
+module "web" {
+  source                = "./modules/web"
+  project               = var.project
+  vpc_id                = module.network.vpc_id
+  public_subnet_1_id    = module.network.public_subnet_1_id
+  public_subnet_2_id    = module.network.public_subnet_2_id
+  private_web_subnet_id = module.network.private_web_subnet_id
+  bastion_sg_id         = module.bastion.sg_id
+  key_name              = aws_key_pair.tpfinal.key_name
+  instance_type         = var.instance_type
+  web_count             = var.web_count
+  region                = var.region
+}
+
+# ── Storage : S3 (KMS) + FTP (subnet privé storage) ──────────────────────────
+module "storage" {
+  source                    = "./modules/storage"
+  project                   = var.project
+  vpc_id                    = module.network.vpc_id
+  private_storage_subnet_id = module.network.private_storage_subnet_id
+  bastion_sg_id             = module.bastion.sg_id
+  key_name                  = aws_key_pair.tpfinal.key_name
+  instance_type             = var.instance_type
+  region                    = var.region
+}
+
+# ── Upload des fichiers Ansible vers S3 ───────────────────────────────────────
+# Les fichiers statiques du rôle webserver
+resource "aws_s3_object" "ansible_site" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/site.yml"
+  source = "${path.module}/../ansible/site.yml"
+  etag   = filemd5("${path.module}/../ansible/site.yml")
+}
+
+resource "aws_s3_object" "ansible_cfg" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/ansible.cfg"
+  source = "${path.module}/../ansible/ansible.cfg"
+  etag   = filemd5("${path.module}/../ansible/ansible.cfg")
+}
+
+resource "aws_s3_object" "webserver_tasks" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/webserver/tasks/main.yml"
+  source = "${path.module}/../ansible/roles/webserver/tasks/main.yml"
+  etag   = filemd5("${path.module}/../ansible/roles/webserver/tasks/main.yml")
+}
+
+resource "aws_s3_object" "webserver_handlers" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/webserver/handlers/main.yml"
+  source = "${path.module}/../ansible/roles/webserver/handlers/main.yml"
+  etag   = filemd5("${path.module}/../ansible/roles/webserver/handlers/main.yml")
+}
+
+resource "aws_s3_object" "webserver_defaults" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/webserver/defaults/main.yml"
+  source = "${path.module}/../ansible/roles/webserver/defaults/main.yml"
+  etag   = filemd5("${path.module}/../ansible/roles/webserver/defaults/main.yml")
+}
+
+resource "aws_s3_object" "webserver_template" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/webserver/templates/index.html.j2"
+  source = "${path.module}/../ansible/roles/webserver/templates/index.html.j2"
+  etag   = filemd5("${path.module}/../ansible/roles/webserver/templates/index.html.j2")
+}
+
+# Inventaire généré avec les IPs privées des webs
+resource "aws_s3_object" "ansible_inventory" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/inventory.ini"
+  content = templatefile("${path.module}/../ansible/inventory.tftpl", {
+    web_ips = module.web.private_ips
+  })
+}
+
+# Variables d'infrastructure injectées dans le playbook
+resource "aws_s3_object" "ansible_extra_vars" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/extra_vars.yml"
+  content = templatefile("${path.module}/templates/extra_vars.yml.tftpl", {
+    vpc_id             = module.network.vpc_id
+    vpc_cidr           = module.network.vpc_cidr
+    region             = var.region
+    bastion_public_ip  = module.bastion.public_ip
+    bastion_private_ip = module.bastion.private_ip
+    s3_bucket_name     = module.storage.bucket_name
+    s3_bucket_arn      = module.storage.bucket_arn
+    alb_dns_name       = module.web.alb_dns_name
+    ftp_private_ip     = module.storage.ftp_private_ip
+    kms_key_id         = module.storage.kms_key_id
+    project            = var.project
+    web_private_ips    = module.web.private_ips
+  })
+}
+
+# ── Ansible master (subnet privé web, accessible via bastion) ─────────────────
+# Créé après que tous les fichiers S3 existent
+module "ansible" {
+  source                = "./modules/ansible"
+  project               = var.project
+  vpc_id                = module.network.vpc_id
+  private_web_subnet_id = module.network.private_web_subnet_id
+  bastion_sg_id         = module.bastion.sg_id
+  key_name              = aws_key_pair.tpfinal.key_name
+  instance_type         = var.instance_type
+  private_key_pem       = tls_private_key.tpfinal.private_key_pem
+  s3_bucket_name        = module.storage.bucket_name
+  region                = var.region
+
+  depends_on = [
+    aws_s3_object.ansible_site,
+    aws_s3_object.ansible_cfg,
+    aws_s3_object.webserver_tasks,
+    aws_s3_object.webserver_handlers,
+    aws_s3_object.webserver_defaults,
+    aws_s3_object.webserver_template,
+    aws_s3_object.ansible_inventory,
+    aws_s3_object.ansible_extra_vars,
+  ]
+}
+
+# ── Génération locale de l'inventaire (usage dev) ─────────────────────────────
+resource "local_file" "ansible_inventory_local" {
+  content = templatefile("${path.module}/../ansible/inventory.tftpl", {
+    web_ips = module.web.private_ips
+  })
+  filename = "${path.module}/../ansible/inventory.ini"
+}

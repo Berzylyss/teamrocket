@@ -1,0 +1,30 @@
+---
+# tasks/main.yml — webserver role
+
+- name: Installer nginx
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+
+- name: Activer et demarrer nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Deployer la page HTML depuis le template Jinja2
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ nginx_root }}/index.html"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    mode: "0644"
+  notify: reload nginx
+
+- name: Supprimer la page par defaut nginx si presente
+  ansible.builtin.file:
+    path: "{{ nginx_root }}/index.html.orig"
+    state: absent
+
+# Le Security Group AWS filtre déjà le trafic entrant sur le port 80.
+# firewalld n'est pas installé par défaut sur AL2023 en EC2.

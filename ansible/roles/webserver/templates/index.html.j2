@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Rocket — Ops Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #e0001a;
+      --red-dark: #8a0010;
+      --red-glow: rgba(224, 0, 26, 0.35);
+      --black: #0a0a0a;
+      --black-mid: #111;
+      --black-light: #1a1a1a;
+      --white: #f0f0f0;
+      --white-dim: #aaa;
+      --mono: 'Share Tech Mono', monospace;
+      --display: 'Orbitron', sans-serif;
+    }
+
+    html, body { height: 100%; background: var(--black); color: var(--white); font-family: var(--mono); overflow-x: hidden; }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    header {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 3rem 2rem 2rem;
+      border-bottom: 1px solid var(--red-dark);
+      background: radial-gradient(ellipse at top, rgba(224,0,26,0.12) 0%, transparent 70%);
+    }
+
+    .rocket-logo { width: 100px; height: 100px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 18px var(--red-glow)); animation: pulse 3s ease-in-out infinite; }
+
+    @keyframes pulse {
+      0%, 100% { filter: drop-shadow(0 0 18px var(--red-glow)); }
+      50%       { filter: drop-shadow(0 0 32px rgba(224,0,26,0.7)); }
+    }
+
+    h1 { font-family: var(--display); font-size: clamp(1.8rem, 5vw, 3.2rem); font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; text-shadow: 0 0 30px var(--red-glow); }
+    .tagline { margin-top: 0.5rem; font-size: 0.75rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--red); }
+
+    .status-bar { display: flex; gap: 2rem; margin-top: 1.5rem; font-size: 0.7rem; color: var(--white-dim); letter-spacing: 0.1em; flex-wrap: wrap; justify-content: center; }
+    .status-bar span { display: flex; align-items: center; gap: 0.4rem; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 6px #00ff88; animation: blink 1.5s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .ticker-wrap { overflow: hidden; border-top: 1px solid #1c1c1c; border-bottom: 1px solid #1c1c1c; background: var(--black-mid); padding: 0.5rem 0; }
+    .ticker-inner { display: flex; gap: 4rem; animation: ticker 28s linear infinite; white-space: nowrap; }
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .ticker-msg { font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--red); }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 700px) { main { grid-template-columns: 1fr; } }
+
+    .card { background: var(--black-light); border: 1px solid #2a2a2a; border-top: 2px solid var(--red); padding: 1.75rem; transition: border-color 0.2s; }
+    .card:hover { border-color: var(--red); }
+    .card.wide { grid-column: 1 / -1; }
+    .card-label { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--red); margin-bottom: 0.75rem; }
+    .card h2 { font-family: var(--display); font-size: 1rem; font-weight: 700; letter-spacing: 0.1em; color: var(--white); margin-bottom: 1rem; }
+    .card p { font-size: 0.8rem; color: var(--white-dim); line-height: 1.8; }
+
+    .infra-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 1rem; }
+    .infra-table th { text-align: left; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); padding: 0.4rem 0.6rem; border-bottom: 1px solid #2a2a2a; }
+    .infra-table td { padding: 0.5rem 0.6rem; color: var(--white-dim); border-bottom: 1px solid #1c1c1c; font-size: 0.72rem; }
+    .infra-table tr:last-child td { border-bottom: none; }
+
+    .badge { display: inline-block; font-size: 0.6rem; padding: 2px 8px; border-radius: 2px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .badge-green  { background: rgba(0,255,136,0.12); color: #00ff88; }
+    .badge-red    { background: rgba(224,0,26,0.15);  color: var(--red); }
+    .badge-blue   { background: rgba(0,136,255,0.12); color: #44aaff; }
+    .badge-orange { background: rgba(255,165,0,0.12); color: #ffaa33; }
+
+    .subnet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    @media (max-width: 700px) { .subnet-grid { grid-template-columns: 1fr; } }
+    .subnet-block { border: 1px solid #2a2a2a; padding: 0.75rem; font-size: 0.72rem; }
+    .subnet-block .sn-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 0.4rem; }
+    .subnet-block .sn-cidr  { color: #00ff88; margin-bottom: 0.5rem; font-size: 0.8rem; }
+    .subnet-block .sn-host  { color: var(--white-dim); padding: 0.2rem 0; border-bottom: 1px solid #1c1c1c; }
+    .subnet-block .sn-host:last-child { border-bottom: none; }
+
+    .ftp-card { background: linear-gradient(135deg, var(--black-light) 0%, #1a0005 100%); border: 1px solid var(--red-dark); border-top: 2px solid var(--red); }
+    .ftp-path { display: flex; align-items: center; gap: 0.5rem; background: var(--black); border: 1px solid #2a2a2a; padding: 0.6rem 1rem; font-size: 0.75rem; color: #00ff88; margin: 1rem 0; }
+    .ftp-path::before { content: '> '; color: var(--red); }
+
+    .ftp-files { list-style: none; margin-top: 0.75rem; }
+    .ftp-files li { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid #1c1c1c; font-size: 0.75rem; color: var(--white-dim); transition: color 0.15s; }
+    .ftp-files li:last-child { border-bottom: none; }
+    .ftp-files li:hover { color: var(--white); }
+    .ftp-files .icon { color: var(--red); }
+    .ftp-files .filename { flex: 1; }
+    .ftp-files .size { color: #555; font-size: 0.65rem; }
+
+    .ftp-access-btn { display: inline-block; margin-top: 1.25rem; padding: 0.65rem 1.5rem; background: transparent; border: 1px solid var(--red); color: var(--red); font-family: var(--display); font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; text-decoration: none; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
+    .ftp-access-btn:hover { background: var(--red); color: var(--black); box-shadow: 0 0 20px var(--red-glow); }
+
+    .kv { display: flex; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.75rem; }
+    .kv .k { color: #555; min-width: 110px; flex-shrink: 0; }
+    .kv .v { color: #00ff88; word-break: break-all; }
+
+    .live { color: #00ff88; }
+    .live-loading { color: #555; font-style: italic; }
+
+    footer { text-align: center; padding: 2rem; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: #333; border-top: 1px solid #1a1a1a; }
+    footer span { color: var(--red); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <svg class="rocket-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="50,8 62,40 38,40" fill="#e0001a"/>
+      <rect x="33" y="38" width="34" height="32" rx="3" fill="#1a1a1a" stroke="#e0001a" stroke-width="1.5"/>
+      <text x="50" y="59" text-anchor="middle" font-family="'Orbitron',sans-serif" font-size="14" font-weight="900" fill="#e0001a">R</text>
+      <rect x="18" y="44" width="15" height="22" rx="3" fill="#1a1a1a" stroke="#8a0010" stroke-width="1"/>
+      <rect x="67" y="44" width="15" height="22" rx="3" fill="#1a1a1a" stroke="#8a0010" stroke-width="1"/>
+      <ellipse cx="32" cy="76" rx="8" ry="4" fill="#e0001a" opacity="0.7"/>
+      <ellipse cx="50" cy="78" rx="8" ry="4" fill="#e0001a" opacity="0.7"/>
+      <ellipse cx="68" cy="76" rx="8" ry="4" fill="#e0001a" opacity="0.7"/>
+    </svg>
+    <h1>Team Rocket</h1>
+    <p class="tagline">Operations Center — AWS Infrastructure</p>
+    <div class="status-bar">
+      <span><span class="dot"></span> Systems nominal</span>
+      <span>Region: {{ aws_region }}</span>
+      <span>VPC: {{ vpc_id }}</span>
+      <span>Clearance: Level R</span>
+    </div>
+  </header>
+
+  <div class="ticker-wrap" aria-hidden="true">
+    <div class="ticker-inner">
+      <span class="ticker-msg">- Prepare for trouble -</span>
+      <span class="ticker-msg">- Make it double -</span>
+      <span class="ticker-msg">- To protect the world from devastation -</span>
+      <span class="ticker-msg">- To unite all peoples within our nation -</span>
+      <span class="ticker-msg">- Surrender now or prepare to fight -</span>
+      <span class="ticker-msg">- Meowth, that's right -</span>
+      <span class="ticker-msg">- Prepare for trouble -</span>
+      <span class="ticker-msg">- Make it double -</span>
+      <span class="ticker-msg">- To protect the world from devastation -</span>
+      <span class="ticker-msg">- To unite all peoples within our nation -</span>
+      <span class="ticker-msg">- Surrender now or prepare to fight -</span>
+      <span class="ticker-msg">- Meowth, that's right -</span>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- Fleet Overview -->
+    <div class="card wide">
+      <p class="card-label">Infrastructure status</p>
+      <h2>Fleet Overview</h2>
+      <table class="infra-table">
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th>Rôle</th>
+            <th>IP</th>
+            <th>Subnet</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ALB</td>
+            <td>Load Balancer HTTPS <span class="badge badge-blue">internet-facing</span></td>
+            <td style="font-size:0.65rem;">{{ alb_dns_name }}</td>
+            <td>Public 10.0.1+4.0/24</td>
+            <td><span class="badge badge-green">Online</span></td>
+          </tr>
+          <tr>
+            <td>{{ bastion_hostname }}</td>
+            <td>Bastion SSH <span class="badge badge-orange">jump host</span></td>
+            <td>pub: {{ bastion_public_ip }}<br/>priv: {{ bastion_private_ip }}</td>
+            <td>Public 10.0.1.0/24</td>
+            <td><span class="badge badge-green">Online</span></td>
+          </tr>
+{% for host in web_hosts %}
+          <tr>
+            <td>{{ host.name }}</td>
+            <td>nginx <span id="az-{{ loop.index }}" class="live-loading">(AZ...)</span></td>
+            <td>{{ host.private_ip }}</td>
+            <td>Private-web 10.0.2.0/24</td>
+            <td><span class="badge badge-green">Online</span></td>
+          </tr>
+{% endfor %}
+          <tr>
+            <td>ansible-master</td>
+            <td>Ansible controller <span class="badge badge-blue">auto-run</span></td>
+            <td><span class="live" id="meta-local-ip">...</span></td>
+            <td>Private-web 10.0.2.0/24</td>
+            <td><span class="badge badge-green">Online</span></td>
+          </tr>
+          <tr>
+            <td>{{ ftp_hostname }}</td>
+            <td>vsftpd + S3 KMS</td>
+            <td>{{ ftp_private_ip }}</td>
+            <td>Private-storage 10.0.3.0/24</td>
+            <td><span class="badge badge-green">Online</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Architecture réseau -->
+    <div class="card wide">
+      <p class="card-label">Network architecture — VPC {{ vpc_id }} ({{ vpc_cidr }})</p>
+      <h2>Topologie multi-subnet</h2>
+      <div class="subnet-grid">
+        <div class="subnet-block">
+          <div class="sn-label">&#9632; Public-1 — AZ-a</div>
+          <div class="sn-cidr">10.0.1.0/24</div>
+          <div class="sn-host">&#x2192; {{ bastion_hostname }} (SSH → my_ip uniquement)</div>
+          <div class="sn-host">&#x2192; ALB node 1 (HTTPS/80)</div>
+          <div class="sn-host">&#x2192; NAT Gateway</div>
+        </div>
+        <div class="subnet-block">
+          <div class="sn-label">&#9632; Public-2 — AZ-b</div>
+          <div class="sn-cidr">10.0.4.0/24</div>
+          <div class="sn-host">&#x2192; ALB node 2 (multi-AZ requis)</div>
+        </div>
+        <div class="subnet-block">
+          <div class="sn-label">&#9632; Private-web — AZ-a</div>
+          <div class="sn-cidr">10.0.2.0/24</div>
+{% for host in web_hosts %}
+          <div class="sn-host">&#x2192; {{ host.name }} nginx ({{ host.private_ip }})</div>
+{% endfor %}
+          <div class="sn-host">&#x2192; Ansible master (auto-run)</div>
+        </div>
+        <div class="subnet-block">
+          <div class="sn-label">&#9632; Private-storage — AZ-b</div>
+          <div class="sn-cidr">10.0.3.0/24</div>
+          <div class="sn-host">&#x2192; {{ ftp_hostname }} vsftpd ({{ ftp_private_ip }})</div>
+          <div class="sn-host">&#x2192; S3 Gateway Endpoint (gratuit)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mission brief -->
+    <div class="card">
+      <p class="card-label">Mission brief</p>
+      <h2>Objective</h2>
+      <p>
+        Infrastructure AWS 100% automatisée (Terraform + Ansible), zéro action manuelle.
+        Le trafic web entre par l'ALB HTTPS. L'accès SSH passe exclusivement par le bastion.
+        L'Ansible master s'auto-configure au boot via S3 et pousse la conf sur les webs.
+      </p>
+      <div style="margin-top:1rem;">
+        <div class="kv"><span class="k">ALB URL</span><span class="v">https://{{ alb_dns_name }}</span></div>
+        <div class="kv"><span class="k">VPC</span><span class="v">{{ vpc_id }} — {{ vpc_cidr }}</span></div>
+        <div class="kv"><span class="k">Région</span><span class="v">{{ aws_region }}</span></div>
+        <div class="kv"><span class="k">Bastion IP pub.</span><span class="v">{{ bastion_public_ip }}</span></div>
+        <div class="kv"><span class="k">Cet hôte</span><span class="v">{{ ansible_hostname }}</span></div>
+        <div class="kv"><span class="k">IP locale</span><span class="v"><span class="live" id="meta-local-ip-brief">...</span></span></div>
+        <div class="kv"><span class="k">AZ</span><span class="v"><span class="live" id="meta-az">...</span></span></div>
+      </div>
+    </div>
+
+    <!-- Security posture -->
+    <div class="card">
+      <p class="card-label">Security posture</p>
+      <h2>Hardening checklist</h2>
+      <table class="infra-table">
+        <tbody>
+          <tr><td>SSH root login</td><td><span class="badge badge-red">Disabled</span></td></tr>
+          <tr><td>Auth par clé uniquement</td><td><span class="badge badge-green">Enforced</span></td></tr>
+          <tr><td>SSH direct (22 public)</td><td><span class="badge badge-red">Bloqué — bastion only</span></td></tr>
+          <tr><td>HTTP direct vers webs</td><td><span class="badge badge-red">Bloqué — ALB only</span></td></tr>
+          <tr><td>ALB HTTPS (TLS 1.3)</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>HTTP → HTTPS redirect 301</td><td><span class="badge badge-green">Configuré</span></td></tr>
+          <tr><td>S3 accès public</td><td><span class="badge badge-red">Bloqué</span></td></tr>
+          <tr><td>Chiffrement S3 (KMS-CMK)</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Versioning S3</td><td><span class="badge badge-green">Enabled</span></td></tr>
+          <tr><td>Rotation clé KMS</td><td><span class="badge badge-green">Activée</span></td></tr>
+          <tr><td>Secrets en clair dans le code</td><td><span class="badge badge-red">Aucun</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- S3 KMS + FTP -->
+    <div class="card ftp-card wide">
+      <p class="card-label">Cloud storage — S3 chiffré KMS + FTP privé</p>
+      <h2>Rocket Archive</h2>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+        <div>
+          <p style="font-size:0.7rem; color:var(--red); letter-spacing:0.2em; text-transform:uppercase; margin-bottom:0.6rem;">S3 Bucket (KMS)</p>
+          <div class="kv"><span class="k">Bucket</span><span class="v">{{ s3_bucket_name }}</span></div>
+          <div class="kv"><span class="k">ARN</span><span class="v" style="font-size:0.65rem;">{{ s3_bucket_arn }}</span></div>
+          <div class="kv"><span class="k">KMS Key ID</span><span class="v">{{ kms_key_id }}</span></div>
+          <div class="kv"><span class="k">Région</span><span class="v">{{ aws_region }}</span></div>
+          <div class="kv"><span class="k">Accès</span><span class="v">VPC Endpoint (Gateway)</span></div>
+        </div>
+        <div>
+          <p style="font-size:0.7rem; color:var(--red); letter-spacing:0.2em; text-transform:uppercase; margin-bottom:0.6rem;">FTP Server (vsftpd)</p>
+          <div class="kv"><span class="k">Host</span><span class="v">{{ ftp_hostname }}</span></div>
+          <div class="kv"><span class="k">IP privée</span><span class="v">{{ ftp_private_ip }}</span></div>
+          <div class="kv"><span class="k">Accès</span><span class="v">Port 21 via bastion (ProxyJump)</span></div>
+          <div class="kv"><span class="k">Mode passif</span><span class="v">21100–21110</span></div>
+          <div class="kv"><span class="k">Subnet</span><span class="v">Private-storage 10.0.3.0/24</span></div>
+        </div>
+      </div>
+
+      <div class="ftp-path">{{ ftp_private_ip }}:{{ ftp_share_path }}</div>
+
+      <ul class="ftp-files">
+        <li>
+          <span class="icon">&#9632;</span>
+          <span class="filename">README_CLASSIFIED.txt</span>
+          <span class="size">1.2 KB</span>
+        </li>
+        <li>
+          <span class="icon">&#9632;</span>
+          <span class="filename">master_plan_v3.pdf</span>
+          <span class="size">4.8 KB</span>
+        </li>
+        <li>
+          <span class="icon">&#9632;</span>
+          <a href="{{ ftp_honeypot_url }}" class="filename" style="color: var(--red); text-decoration: none;">
+            secret_weapon_rickroll.zip
+          </a>
+          <span class="size">??? KB</span>
+        </li>
+      </ul>
+
+      <a class="ftp-access-btn" href="{{ ftp_honeypot_url }}" target="_blank">
+        Access Archive &rsaquo;
+      </a>
+    </div>
+
+  </main>
+
+  <footer>
+    Deployed by <span>Team Rocket DevSecOps</span> &mdash;
+    Mastere Cybersécurité 4A &mdash;
+    Terraform + Ansible &mdash; AWS {{ aws_region }} &mdash; {{ project }}
+  </footer>
+
+  <script>
+    (async () => {
+      try {
+        const tokenRes = await fetch('http://169.254.169.254/latest/api/token', {
+          method: 'PUT',
+          headers: { 'X-aws-ec2-metadata-token-ttl-seconds': '60' }
+        });
+        const token = await tokenRes.text();
+        const headers = { 'X-aws-ec2-metadata-token': token };
+
+        const [ipRes, azRes] = await Promise.all([
+          fetch('http://169.254.169.254/latest/meta-data/local-ipv4', { headers }),
+          fetch('http://169.254.169.254/latest/meta-data/placement/availability-zone', { headers })
+        ]);
+
+        const localIp = await ipRes.text();
+        const az      = await azRes.text();
+
+        ['meta-local-ip', 'meta-local-ip-brief'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = localIp;
+        });
+        document.getElementById('meta-az').textContent = az;
+
+        const rows = document.querySelectorAll('.infra-table tbody tr');
+        rows.forEach(row => {
+          const ipCell = row.cells[2];
+          if (ipCell && ipCell.textContent.trim() === localIp) {
+            const azSpan = row.querySelector('[id^="az-"]');
+            if (azSpan) { azSpan.textContent = az; azSpan.className = 'live'; }
+          }
+        });
+
+      } catch (e) {
+        ['meta-local-ip', 'meta-local-ip-brief', 'meta-az'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.textContent = 'N/A'; el.className = ''; el.style.color = '#555'; }
+        });
+        document.querySelectorAll('[id^="az-"]').forEach(el => { el.textContent = ''; el.className = ''; });
+      }
+    })();
+  </script>
+
+</body>
+</html>

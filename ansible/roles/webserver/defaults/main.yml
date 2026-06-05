@@ -1,0 +1,26 @@
+---
+# Valeurs par défaut — surchargées par --extra-vars "@extra_vars.yml" au runtime
+aws_region: "us-east-1"
+vpc_id: "vpc-00000000"
+vpc_cidr: "10.0.0.0/16"
+
+bastion_hostname: "bastion"
+bastion_public_ip: "0.0.0.0"
+bastion_private_ip: "10.0.1.10"
+
+web_hosts: []
+
+ftp_hostname: "ftp-01"
+ftp_private_ip: "10.0.3.10"
+ftp_share_path: "/srv/ftp/rocket-archive/"
+
+s3_bucket_name: "team-rocket-archive"
+s3_bucket_arn: "arn:aws:s3:::team-rocket-archive"
+kms_key_id: "00000000-0000-0000-0000-000000000000"
+
+alb_dns_name: "alb.example.com"
+ftp_honeypot_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+project: "tpfinal"
+
+nginx_root: "/usr/share/nginx/html"
+nginx_user: "nginx"

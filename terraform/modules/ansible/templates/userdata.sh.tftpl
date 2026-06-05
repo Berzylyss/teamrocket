@@ -1,0 +1,46 @@
+#!/bin/bash
+# Script de bootstrap : installe Ansible, télécharge les fichiers depuis S3,
+# attend que les webs soient prêts, puis lance le playbook automatiquement.
+set -euo pipefail
+exec > /var/log/ansible-bootstrap.log 2>&1
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] === Démarrage du bootstrap Ansible ==="
+
+hostnamectl set-hostname ansible-master
+
+# ── Packages ──────────────────────────────────────────────────────────────────
+dnf update -y
+dnf install -y ansible-core python3-pip
+pip3 install boto3 botocore --quiet
+
+# ── Clé SSH pour atteindre les serveurs web et FTP ───────────────────────────
+mkdir -p /home/ec2-user/.ssh
+cat > /home/ec2-user/.ssh/id_rsa << 'ENDSSHKEY'
+${private_key_pem}
+ENDSSHKEY
+chmod 600 /home/ec2-user/.ssh/id_rsa
+chown -R ec2-user:ec2-user /home/ec2-user/.ssh
+
+# ── Téléchargement des fichiers Ansible depuis S3 ─────────────────────────────
+ANSIBLE_DIR=/opt/ansible
+mkdir -p $ANSIBLE_DIR
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Téléchargement depuis s3://${s3_bucket_name}/ansible/"
+aws s3 sync s3://${s3_bucket_name}/ansible/ $ANSIBLE_DIR/ --region ${region}
+
+chown -R ec2-user:ec2-user $ANSIBLE_DIR
+
+# ── Attendre que les serveurs web soient prêts ───────────────────────────────
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attente 120s pour que les web servers démarrent..."
+sleep 120
+
+# ── Lancement du playbook ─────────────────────────────────────────────────────
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Lancement d'ansible-playbook..."
+cd $ANSIBLE_DIR
+sudo -u ec2-user ansible-playbook \
+  -i inventory.ini \
+  site.yml \
+  --extra-vars "@extra_vars.yml" \
+  2>&1 | tee /var/log/ansible-playbook.log
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] === Bootstrap terminé ==="

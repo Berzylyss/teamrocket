@@ -1,0 +1,6 @@
+---
+- name: Configurer les serveurs web (nginx + page HTML)
+  hosts: web
+  become: true
+  roles:
+    - webserver

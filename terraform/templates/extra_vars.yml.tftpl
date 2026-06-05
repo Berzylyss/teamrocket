@@ -1,0 +1,26 @@
+---
+# Variables injectées par Terraform → utilisées par ansible-playbook --extra-vars
+vpc_id: "${vpc_id}"
+vpc_cidr: "${vpc_cidr}"
+aws_region: "${region}"
+
+bastion_hostname: "bastion"
+bastion_public_ip: "${bastion_public_ip}"
+bastion_private_ip: "${bastion_private_ip}"
+
+s3_bucket_name: "${s3_bucket_name}"
+s3_bucket_arn: "${s3_bucket_arn}"
+kms_key_id: "${kms_key_id}"
+
+alb_dns_name: "${alb_dns_name}"
+
+ftp_hostname: "ftp-01"
+ftp_private_ip: "${ftp_private_ip}"
+ftp_share_path: "/srv/ftp/rocket-archive/"
+
+project: "${project}"
+
+web_hosts:
+%{ for idx, ip in web_private_ips ~}
+  - { name: "web-${idx + 1}", private_ip: "${ip}" }
+%{ endfor ~}
