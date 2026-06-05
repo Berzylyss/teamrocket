@@ -7,6 +7,7 @@ exec > /var/log/ansible-bootstrap.log 2>&1
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] === Démarrage du bootstrap Ansible ==="
 
 hostnamectl set-hostname ansible-master
+# FTP_TARGET=${ftp_private_ip}  — marqueur Terraform : modification = remplacement de l'instance
 
 # ── Packages ──────────────────────────────────────────────────────────────────
 dnf update -y

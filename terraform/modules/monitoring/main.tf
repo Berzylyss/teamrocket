@@ -82,11 +82,27 @@ resource "aws_security_group" "monitoring" {
   }
 
   ingress {
+    description = "Grafana depuis subnet prive (ansible-master tunnel)"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.2.0/24"]
+  }
+
+  ingress {
     description     = "Prometheus depuis bastion (tunnel SSH)"
     from_port       = 9090
     to_port         = 9090
     protocol        = "tcp"
     security_groups = [var.bastion_sg_id]
+  }
+
+  ingress {
+    description = "Prometheus depuis subnet prive (ansible-master tunnel)"
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.2.0/24"]
   }
 
   egress {

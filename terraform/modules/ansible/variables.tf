@@ -37,3 +37,8 @@ variable "region" {
   type    = string
   default = "us-east-1"
 }
+
+variable "ftp_private_ip" {
+  description = "IP privée du serveur FTP — incluse dans user_data pour forcer le remplacement de l'Ansible master si le FTP change"
+  type        = string
+}

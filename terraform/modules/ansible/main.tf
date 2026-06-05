@@ -47,6 +47,7 @@ resource "aws_instance" "ansible" {
     private_key_pem = var.private_key_pem
     s3_bucket_name  = var.s3_bucket_name
     region          = var.region
+    ftp_private_ip  = var.ftp_private_ip
   })
 
   tags = { Name = "${var.project}-ansible-master" }

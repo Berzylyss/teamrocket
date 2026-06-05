@@ -249,6 +249,7 @@ module "ansible" {
   private_key_pem       = tls_private_key.tpfinal.private_key_pem
   s3_bucket_name        = module.storage.bucket_name
   region                = var.region
+  ftp_private_ip        = module.storage.ftp_private_ip
 
   depends_on = [
     aws_s3_object.ansible_site,
