@@ -7,7 +7,7 @@ variable "region" {
 variable "project" {
   description = "Prefixe de nommage des ressources"
   type        = string
-  default     = "tp3"
+  default     = "tpfinal"
 }
 
 variable "my_ip" {
