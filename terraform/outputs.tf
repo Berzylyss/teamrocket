@@ -59,11 +59,11 @@ output "ssh_ansible_via_bastion" {
 }
 
 output "monitoring_private_ip" {
-  description = "IP privée du serveur de supervision"
-  value       = module.monitoring.private_ip
+  description = "IP privee du serveur monitoring (Prometheus + Grafana)"
+  value       = module.monitoring.monitoring_private_ip
 }
 
-output "tunnel_grafana" {
-  description = "Tunnel SSH pour accéder à Grafana (puis http://localhost:3000) et Prometheus (http://localhost:9090)"
-  value       = "ssh -i ansible/tpfinal.pem -L 3000:${module.monitoring.private_ip}:3000 -L 9090:${module.monitoring.private_ip}:9090 ec2-user@${module.bastion.public_ip}"
+output "grafana_tunnel" {
+  description = "Tunnel SSH pour acceder a Grafana (puis http://localhost:3000)"
+  value       = "ssh -i ansible/tpfinal.pem -L 3000:${module.monitoring.monitoring_private_ip}:3000 -L 9090:${module.monitoring.monitoring_private_ip}:9090 ec2-user@${module.bastion.public_ip}"
 }

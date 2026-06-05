@@ -14,6 +14,9 @@ scrape_configs:
 {% for host in groups['web'] %}
           - "{{ host }}:9100"
 {% endfor %}
+{% for host in groups['ftp'] %}
+          - "{{ host }}:9100"
+{% endfor %}
         labels:
           env: "production"
-          project: "{{ project | default('tpfinal') }}"
+          project: "{{ project }}"

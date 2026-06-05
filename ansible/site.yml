@@ -1,18 +1,27 @@
 ---
+- name: Collecter les facts du controleur Ansible (IP locale pour le template HTML)
+  hosts: localhost
+  gather_facts: true
+
 - name: Configurer les serveurs web (nginx + page HTML)
   hosts: web
   become: true
   roles:
+    - hardening
     - webserver
-
-- name: Installer node-exporter sur les serveurs web (métriques)
-  hosts: web
-  become: true
-  roles:
     - node_exporter
 
-- name: Déployer Prometheus + Grafana (supervision)
+- name: Configurer le serveur FTP (vsftpd)
+  hosts: ftp
+  become: true
+  roles:
+    - hardening
+    - ftpserver
+    - node_exporter
+
+- name: Déployer la supervision (Prometheus + Grafana)
   hosts: monitoring
   become: true
   roles:
+    - hardening
     - monitoring

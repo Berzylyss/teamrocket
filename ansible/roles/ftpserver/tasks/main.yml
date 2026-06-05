@@ -1,0 +1,58 @@
+---
+- name: Installer vsftpd
+  ansible.builtin.dnf:
+    name: vsftpd
+    state: present
+
+- name: Créer l'utilisateur FTP (shell nologin)
+  ansible.builtin.user:
+    name: "{{ ftp_user }}"
+    password: "{{ ftp_user_password | password_hash('sha512') }}"
+    shell: /sbin/nologin
+    create_home: true
+    state: present
+
+- name: Créer le répertoire de partage FTP
+  ansible.builtin.file:
+    path: "{{ ftp_share_path }}"
+    state: directory
+    owner: "{{ ftp_user }}"
+    group: "{{ ftp_user }}"
+    mode: "0755"
+
+- name: Déposer le fichier de bienvenue dans le partage
+  ansible.builtin.copy:
+    content: "CLASSIFIED — Teamrocket FTP Archive\n"
+    dest: "{{ ftp_share_path }}/README_CLASSIFIED.txt"
+    owner: "{{ ftp_user }}"
+    group: "{{ ftp_user }}"
+    mode: "0644"
+
+- name: Déployer vsftpd.conf depuis le template
+  ansible.builtin.template:
+    src: vsftpd.conf.j2
+    dest: /etc/vsftpd/vsftpd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  notify: restart vsftpd
+
+- name: Activer et démarrer vsftpd
+  ansible.builtin.service:
+    name: vsftpd
+    state: started
+    enabled: true
+
+- name: Ouvrir port FTP control dans firewalld
+  ansible.posix.firewalld:
+    port: "21/tcp"
+    permanent: true
+    state: enabled
+  notify: Recharger firewalld
+
+- name: Ouvrir plage passive FTP dans firewalld
+  ansible.posix.firewalld:
+    port: "21100-21110/tcp"
+    permanent: true
+    state: enabled
+  notify: Recharger firewalld

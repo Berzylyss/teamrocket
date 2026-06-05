@@ -101,6 +101,49 @@ resource "aws_route_table_association" "private_storage" {
   route_table_id = aws_route_table.private.id
 }
 
+# ── NACL privée (exigence 8 du cahier des charges) ───────────────────────────
+resource "aws_network_acl" "private" {
+  vpc_id     = aws_vpc.main.id
+  subnet_ids = [aws_subnet.private_web.id, aws_subnet.private_storage.id]
+  tags       = { Name = "${var.project}-nacl-private" }
+}
+
+# Inbound : trafic interne VPC (SSH, FTP, HTTP, node_exporter…)
+resource "aws_network_acl_rule" "private_in_vpc" {
+  network_acl_id = aws_network_acl.private.id
+  rule_number    = 100
+  protocol       = "tcp"
+  rule_action    = "allow"
+  egress         = false
+  cidr_block     = "10.0.0.0/16"
+  from_port      = 0
+  to_port        = 65535
+}
+
+# Inbound : trafic de retour Internet via NAT (ports éphémères)
+resource "aws_network_acl_rule" "private_in_return" {
+  network_acl_id = aws_network_acl.private.id
+  rule_number    = 200
+  protocol       = "tcp"
+  rule_action    = "allow"
+  egress         = false
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 1024
+  to_port        = 65535
+}
+
+# Outbound : tout autoriser (le filtrage fin est assuré par les SG)
+resource "aws_network_acl_rule" "private_out_all" {
+  network_acl_id = aws_network_acl.private.id
+  rule_number    = 100
+  protocol       = "-1"
+  rule_action    = "allow"
+  egress         = true
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 0
+  to_port        = 0
+}
+
 # ── VPC Endpoint S3 (Gateway, gratuit — évite le NAT GW pour S3) ─────────────
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id

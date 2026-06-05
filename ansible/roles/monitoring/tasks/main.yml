@@ -1,4 +1,13 @@
 ---
+# =============================================================================
+# Rôle monitoring — Prometheus + Grafana sur Amazon Linux 2023
+# Idempotent : rejouer ne change rien (changed=0)
+#
+# Accès après déploiement via tunnel SSH :
+#   ssh -i key.pem -L 3000:<IP>:3000 -L 9090:<IP>:9090 ec2-user@<BASTION>
+#   Grafana → http://localhost:3000  (admin / admin)
+# =============================================================================
+
 # ============================================================
 # PROMETHEUS
 # ============================================================
@@ -26,6 +35,7 @@
     url: "https://github.com/prometheus/prometheus/releases/download/v2.52.0/prometheus-2.52.0.linux-amd64.tar.gz"
     dest: /tmp/prometheus.tar.gz
     mode: "0644"
+    # checksum: sha256:... (à ajouter en prod)
 
 - name: Extraire Prometheus
   ansible.builtin.unarchive:
@@ -42,7 +52,9 @@
     group: root
     mode: "0755"
     remote_src: true
-  loop: [prometheus, promtool]
+  loop:
+    - prometheus
+    - promtool
   notify: Redémarrer prometheus
 
 - name: Déployer la configuration Prometheus
@@ -61,7 +73,9 @@
     owner: root
     group: root
     mode: "0644"
-  notify: [Recharger systemd, Redémarrer prometheus]
+  notify:
+    - Recharger systemd
+    - Redémarrer prometheus
 
 - name: Activer et démarrer Prometheus
   ansible.builtin.systemd:
@@ -70,12 +84,61 @@
     state: started
     daemon_reload: true
 
-- name: Ouvrir port 9090 (iptables)
-  ansible.builtin.iptables:
-    chain: INPUT
-    protocol: tcp
-    destination_port: "9090"
-    jump: ACCEPT
+- name: Ouvrir port 9090 dans firewalld
+  ansible.posix.firewalld:
+    port: "9090/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+
+# ============================================================
+# DESACTIVER LES SERVICES ECS (AMI ECS-optimized = Docker + agent inutiles)
+# ============================================================
+
+- name: Arreter et desactiver les services ECS/Docker inutiles
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - amazon-ecs-init
+    - docker
+    - containerd
+  ignore_errors: true
+
+# ============================================================
+# SWAP (nécessaire sur t3.micro avant l'installation de Grafana)
+# ============================================================
+
+- name: Créer le fichier de swap (1 Go)
+  ansible.builtin.command:
+    cmd: dd if=/dev/zero of=/swapfile bs=128M count=8
+    creates: /swapfile
+
+- name: Définir les permissions du fichier de swap
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Initialiser le swap
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  changed_when: true
+  when: ansible_swaptotal_mb == 0
+
+- name: Activer le swap
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  ignore_errors: true
+  when: ansible_swaptotal_mb == 0
+
+- name: Rendre le swap persistant au reboot
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present
 
 # ============================================================
 # GRAFANA
@@ -103,7 +166,7 @@
     name: grafana
     state: present
 
-- name: Créer le répertoire provisioning datasources
+- name: Créer le répertoire de provisioning datasources
   ansible.builtin.file:
     path: /etc/grafana/provisioning/datasources
     state: directory
@@ -111,10 +174,19 @@
     group: grafana
     mode: "0750"
 
-- name: Configurer la datasource Prometheus
+- name: Configurer la datasource Prometheus dans Grafana
   ansible.builtin.template:
     src: grafana-datasource.yml.j2
     dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: grafana
+    group: grafana
+    mode: "0640"
+  notify: Redémarrer grafana
+
+- name: Provisionner un dashboard node-exporter
+  ansible.builtin.template:
+    src: grafana-dashboard-provisioning.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/node.yml
     owner: grafana
     group: grafana
     mode: "0640"
@@ -126,9 +198,9 @@
     enabled: true
     state: started
 
-- name: Ouvrir port 3000 (iptables)
-  ansible.builtin.iptables:
-    chain: INPUT
-    protocol: tcp
-    destination_port: "3000"
-    jump: ACCEPT
+- name: Ouvrir port 3000 dans firewalld
+  ansible.posix.firewalld:
+    port: "3000/tcp"
+    permanent: true
+    state: enabled
+    immediate: true

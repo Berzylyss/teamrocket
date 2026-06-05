@@ -1,4 +1,9 @@
 ---
+# =============================================================================
+# Rôle node_exporter — agent de métriques système (port 9100)
+# À appliquer sur les hôtes web et ftp pour qu'ils soient scrapés par Prometheus
+# =============================================================================
+
 - name: Créer l'utilisateur système node_exporter
   ansible.builtin.user:
     name: node_exporter
@@ -50,7 +55,9 @@
 
       [Install]
       WantedBy=multi-user.target
-  notify: [Recharger systemd, Redémarrer node_exporter]
+  notify:
+    - Recharger systemd
+    - Redémarrer node_exporter
 
 - name: Activer et démarrer node_exporter
   ansible.builtin.systemd:
@@ -59,9 +66,9 @@
     state: started
     daemon_reload: true
 
-- name: Ouvrir port 9100 (iptables)
-  ansible.builtin.iptables:
-    chain: INPUT
-    protocol: tcp
-    destination_port: "9100"
-    jump: ACCEPT
+- name: Ouvrir port 9100 dans firewalld
+  ansible.posix.firewalld:
+    port: "9100/tcp"
+    permanent: true
+    state: enabled
+    immediate: true

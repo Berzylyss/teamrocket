@@ -1,0 +1,61 @@
+---
+- name: Installer firewalld
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+
+- name: Activer et démarrer firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Désactiver l'authentification par mot de passe SSH
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    state: present
+  notify: restart sshd
+
+- name: Interdire la connexion SSH en tant que root
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+    state: present
+  notify: restart sshd
+
+- name: Limiter les tentatives d'authentification SSH
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?MaxAuthTries'
+    line: 'MaxAuthTries 3'
+    state: present
+  notify: restart sshd
+
+- name: Installer dnf-automatic (mises à jour de sécurité automatiques)
+  ansible.builtin.dnf:
+    name: dnf-automatic
+    state: present
+
+- name: Restreindre dnf-automatic aux mises à jour de sécurité
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: '^upgrade_type'
+    line: 'upgrade_type = security'
+    state: present
+
+- name: Activer l'application automatique des mises à jour
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: '^apply_updates'
+    line: 'apply_updates = yes'
+    state: present
+
+- name: Activer dnf-automatic.timer
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    enabled: true
+    state: started
+    daemon_reload: true

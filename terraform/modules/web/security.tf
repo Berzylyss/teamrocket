@@ -44,13 +44,20 @@ resource "aws_security_group" "web" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  # SSH autorisé depuis le CIDR VPC (bastion + ansible master)
   ingress {
-    description = "SSH depuis VPC"
+    description     = "SSH depuis bastion"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [var.bastion_sg_id]
+  }
+
+  ingress {
+    description = "SSH depuis Ansible master (subnet prive web)"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = ["10.0.2.0/24"]
   }
 
   egress {

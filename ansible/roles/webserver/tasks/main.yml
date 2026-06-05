@@ -26,5 +26,9 @@
     path: "{{ nginx_root }}/index.html.orig"
     state: absent
 
-# Le Security Group AWS filtre déjà le trafic entrant sur le port 80.
-# firewalld n'est pas installé par défaut sur AL2023 en EC2.
+- name: Ouvrir port 80 dans firewalld
+  ansible.posix.firewalld:
+    service: http
+    permanent: true
+    state: enabled
+    immediate: true

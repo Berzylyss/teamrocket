@@ -34,6 +34,10 @@ chown -R ec2-user:ec2-user $ANSIBLE_DIR
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attente 120s pour que les web servers démarrent..."
 sleep 120
 
+# ── Collections Ansible requises (installées pour ec2-user qui lance le playbook)
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Installation des collections Ansible..."
+sudo -u ec2-user ansible-galaxy collection install ansible.posix
+
 # ── Lancement du playbook ─────────────────────────────────────────────────────
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Lancement d'ansible-playbook..."
 cd $ANSIBLE_DIR

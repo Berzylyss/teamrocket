@@ -1,0 +1,9 @@
+---
+- name: restart vsftpd
+  ansible.builtin.service:
+    name: vsftpd
+    state: restarted
+
+- name: Recharger firewalld
+  ansible.builtin.command: firewall-cmd --reload
+  changed_when: false
