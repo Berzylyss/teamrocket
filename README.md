@@ -1,6 +1,12 @@
 # Projet final — Infrastructure AWS automatisee & securisee (Terraform + Ansible)
 
-**Equipe Team Rocket** — Mastere Cybersecurite 4A
+**Equipe Team Rocket** — Mastere Cybersecurite 4A - Groupe Team Rocket !
+Anelyse RIVIERE, alias Jessie (Cheffe du groupe)
+Corentin EYDOUX, alias James (Sous-fifre du cheffe)
+Jonathan JOLY, alias Miaouss (Il compte les pièces)
+Arnaud VIGIER, alias SMOGOGO (parce qu'il fume tout le temps)
+Thomas VIOLETTE, alias Qulbutoké (Ne sert à rien mais est drôle)
+
 
 ---
 
@@ -14,44 +20,7 @@ L'Ansible master se configure seul au boot : il telecharge les playbooks depuis 
 
 ## 2. Architecture deployee
 
-```mermaid
-graph TD
-    User(["Internet"])
-
-    subgraph VPC["VPC — 10.0.0.0/16 · us-east-1"]
-
-        subgraph Pub["Subnets publics — 10.0.1.0/24 · 10.0.4.0/24"]
-            ALB["ALB\nHTTPS :443 · redirect :80 → :443"]
-            Bastion["Bastion\nSSH jump host"]
-            NAT(("NAT\nGateway"))
-        end
-
-        subgraph PrivWeb["Subnet prive-web — 10.0.2.0/24"]
-            Ansible["ansible-master\nauto-run au boot"]
-            Web1["web-1\nnginx"]
-            Web2["web-2\nnginx"]
-            Mon["monitoring\nPrometheus · Grafana"]
-        end
-
-        subgraph PrivStorage["Subnet prive-storage — 10.0.3.0/24"]
-            FTP["ftp-01\nvsftpd"]
-        end
-
-        S3[("S3 Bucket\nKMS-CMK · Versioning")]
-    end
-
-    User -->|HTTPS| ALB
-    User -->|SSH| Bastion
-    ALB --> Web1 & Web2
-    Bastion -.->|ProxyJump| Ansible & Web1 & Web2 & Mon & FTP
-    Ansible -->|playbook| Web1 & Web2 & Mon & FTP
-    Ansible -->|s3 sync| S3
-    Web1 & Web2 -->|FTP :21| FTP
-    FTP -->|s3 put/get| S3
-    Mon -->|scrape :9100| Web1 & Web2 & FTP
-    PrivWeb -.->|sortant| NAT
-    PrivStorage -.->|sortant| NAT
-```
+![Architecture TeamRocket](terraform/Schema1.svg)
 
 ### Composants
 
