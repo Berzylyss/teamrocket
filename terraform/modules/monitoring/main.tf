@@ -88,7 +88,6 @@ resource "aws_security_group_rule" "web_node_exporter" {
 }
 
 # ---- Instance EC2 monitoring ------------------------------------------------
-# Même pattern que le module ansible : user_data bootstrap depuis S3
 resource "aws_instance" "monitoring" {
   ami                    = data.aws_ami.al2023.id
   instance_type          = var.instance_type
@@ -97,22 +96,28 @@ resource "aws_instance" "monitoring" {
   key_name               = var.key_name
   iam_instance_profile   = "LabInstanceProfile"
 
+  user_data_replace_on_change = true
   user_data = <<-EOF
     #!/bin/bash
-    # Bootstrap : installer Ansible depuis S3 et lancer le play monitoring
-    dnf install -y ansible-core aws-cli
-
+    set -e
+    exec > /var/log/ansible-monitoring.log 2>&1
+    # Dépendances
+    dnf install -y ansible-core aws-cli python3-firewall
+    # Collection ansible.posix
+    ansible-galaxy collection install ansible.posix
     # Récupérer les fichiers Ansible depuis S3
     aws s3 sync s3://${var.s3_bucket_name}/ansible/ /opt/ansible/ \
       --region ${var.region}
-
-    # Lancer le play monitoring en local (localhost)
+    # extra_vars séparé (uploadé en dernier par Terraform)
+    aws s3 cp s3://${var.s3_bucket_name}/ansible/extra_vars.yml \
+      /opt/ansible/extra_vars.yml --region ${var.region}
+    # Lancer le play monitoring en connexion locale
     cd /opt/ansible
     ansible-playbook site.yml \
       --limit monitoring \
       --extra-vars @extra_vars.yml \
-      -i inventory.ini \
-      2>&1 | tee /var/log/ansible-monitoring.log
+      --extra-vars "ansible_connection=local" \
+      -i inventory.ini
   EOF
 
   tags = { Name = "${var.project}-monitoring" }

@@ -70,12 +70,12 @@
     state: started
     daemon_reload: true
 
-- name: Ouvrir port 9090 dans firewalld
-  ansible.posix.firewalld:
-    port: "9090/tcp"
-    permanent: true
-    state: enabled
-    immediate: true
+- name: Ouvrir port 9090 (iptables)
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "9090"
+    jump: ACCEPT
 
 # ============================================================
 # GRAFANA
@@ -126,9 +126,9 @@
     enabled: true
     state: started
 
-- name: Ouvrir port 3000 dans firewalld
-  ansible.posix.firewalld:
-    port: "3000/tcp"
-    permanent: true
-    state: enabled
-    immediate: true
+- name: Ouvrir port 3000 (iptables)
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "3000"
+    jump: ACCEPT
