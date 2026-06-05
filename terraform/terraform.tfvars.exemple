@@ -1,0 +1,4 @@
+web_count    = 2
+my_ip        = "X.X.X.X/32" # votre IP publique (curl ifconfig.me)
+aws_region   = "us-east-1"
+project_name = "team-rocket"
