@@ -4,3 +4,15 @@
   become: true
   roles:
     - webserver
+
+- name: Installer node-exporter sur les serveurs web (métriques)
+  hosts: web
+  become: true
+  roles:
+    - node_exporter
+
+- name: Déployer Prometheus + Grafana (supervision)
+  hosts: monitoring
+  become: true
+  roles:
+    - monitoring

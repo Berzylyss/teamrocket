@@ -87,12 +87,13 @@ resource "aws_s3_object" "webserver_template" {
   etag   = filemd5("${path.module}/../ansible/roles/webserver/templates/index.html.j2")
 }
 
-# Inventaire généré avec les IPs privées des webs
+# Inventaire généré avec les IPs privées des webs + monitoring
 resource "aws_s3_object" "ansible_inventory" {
   bucket = module.storage.bucket_name
   key    = "ansible/inventory.ini"
   content = templatefile("${path.module}/../ansible/inventory.tftpl", {
-    web_ips = module.web.private_ips
+    web_ips       = module.web.private_ips
+    monitoring_ip = module.monitoring.private_ip
   })
 }
 
@@ -114,6 +115,70 @@ resource "aws_s3_object" "ansible_extra_vars" {
     project            = var.project
     web_private_ips    = module.web.private_ips
   })
+}
+
+# ── Monitoring (Prometheus + Grafana) ─────────────────────────────────────────
+module "monitoring" {
+  source                = "./modules/monitoring"
+  project               = var.project
+  vpc_id                = module.network.vpc_id
+  private_web_subnet_id = module.network.private_web_subnet_id
+  bastion_sg_id         = module.bastion.sg_id
+  web_sg_id             = module.web.web_sg_id
+  key_name              = aws_key_pair.tpfinal.key_name
+  instance_type         = var.instance_type
+  region                = var.region
+  s3_bucket_name        = module.storage.bucket_name
+}
+
+# ── Upload des fichiers Ansible monitoring vers S3 ────────────────────────────
+resource "aws_s3_object" "monitoring_tasks" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/monitoring/tasks/main.yml"
+  source = "${path.module}/../ansible/roles/monitoring/tasks/main.yml"
+  etag   = filemd5("${path.module}/../ansible/roles/monitoring/tasks/main.yml")
+}
+
+resource "aws_s3_object" "monitoring_handlers" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/monitoring/handlers/main.yml"
+  source = "${path.module}/../ansible/roles/monitoring/handlers/main.yml"
+  etag   = filemd5("${path.module}/../ansible/roles/monitoring/handlers/main.yml")
+}
+
+resource "aws_s3_object" "monitoring_tpl_prometheus_yml" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/monitoring/templates/prometheus.yml.j2"
+  source = "${path.module}/../ansible/roles/monitoring/templates/prometheus.yml.j2"
+  etag   = filemd5("${path.module}/../ansible/roles/monitoring/templates/prometheus.yml.j2")
+}
+
+resource "aws_s3_object" "monitoring_tpl_prometheus_svc" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/monitoring/templates/prometheus.service.j2"
+  source = "${path.module}/../ansible/roles/monitoring/templates/prometheus.service.j2"
+  etag   = filemd5("${path.module}/../ansible/roles/monitoring/templates/prometheus.service.j2")
+}
+
+resource "aws_s3_object" "monitoring_tpl_grafana_ds" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/monitoring/templates/grafana-datasource.yml.j2"
+  source = "${path.module}/../ansible/roles/monitoring/templates/grafana-datasource.yml.j2"
+  etag   = filemd5("${path.module}/../ansible/roles/monitoring/templates/grafana-datasource.yml.j2")
+}
+
+resource "aws_s3_object" "node_exporter_tasks" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/node_exporter/tasks/main.yml"
+  source = "${path.module}/../ansible/roles/node_exporter/tasks/main.yml"
+  etag   = filemd5("${path.module}/../ansible/roles/node_exporter/tasks/main.yml")
+}
+
+resource "aws_s3_object" "node_exporter_handlers" {
+  bucket = module.storage.bucket_name
+  key    = "ansible/roles/node_exporter/handlers/main.yml"
+  source = "${path.module}/../ansible/roles/node_exporter/handlers/main.yml"
+  etag   = filemd5("${path.module}/../ansible/roles/node_exporter/handlers/main.yml")
 }
 
 # ── Ansible master (subnet privé web, accessible via bastion) ─────────────────
@@ -139,13 +204,21 @@ module "ansible" {
     aws_s3_object.webserver_template,
     aws_s3_object.ansible_inventory,
     aws_s3_object.ansible_extra_vars,
+    aws_s3_object.monitoring_tasks,
+    aws_s3_object.monitoring_handlers,
+    aws_s3_object.monitoring_tpl_prometheus_yml,
+    aws_s3_object.monitoring_tpl_prometheus_svc,
+    aws_s3_object.monitoring_tpl_grafana_ds,
+    aws_s3_object.node_exporter_tasks,
+    aws_s3_object.node_exporter_handlers,
   ]
 }
 
 # ── Génération locale de l'inventaire (usage dev) ─────────────────────────────
 resource "local_file" "ansible_inventory_local" {
   content = templatefile("${path.module}/../ansible/inventory.tftpl", {
-    web_ips = module.web.private_ips
+    web_ips       = module.web.private_ips
+    monitoring_ip = module.monitoring.private_ip
   })
   filename = "${path.module}/../ansible/inventory.ini"
 }

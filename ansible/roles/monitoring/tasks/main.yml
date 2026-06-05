@@ -1,0 +1,134 @@
+---
+# ============================================================
+# PROMETHEUS
+# ============================================================
+
+- name: Créer l'utilisateur système prometheus
+  ansible.builtin.user:
+    name: prometheus
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+
+- name: Créer les répertoires Prometheus
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0755"
+  loop:
+    - /etc/prometheus
+    - /var/lib/prometheus
+
+- name: Télécharger Prometheus
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v2.52.0/prometheus-2.52.0.linux-amd64.tar.gz"
+    dest: /tmp/prometheus.tar.gz
+    mode: "0644"
+
+- name: Extraire Prometheus
+  ansible.builtin.unarchive:
+    src: /tmp/prometheus.tar.gz
+    dest: /tmp/
+    remote_src: true
+    creates: /tmp/prometheus-2.52.0.linux-amd64
+
+- name: Installer les binaires Prometheus
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-2.52.0.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  loop: [prometheus, promtool]
+  notify: Redémarrer prometheus
+
+- name: Déployer la configuration Prometheus
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+    mode: "0644"
+  notify: Redémarrer prometheus
+
+- name: Déployer le service systemd Prometheus
+  ansible.builtin.template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: [Recharger systemd, Redémarrer prometheus]
+
+- name: Activer et démarrer Prometheus
+  ansible.builtin.systemd:
+    name: prometheus
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Ouvrir port 9090 dans firewalld
+  ansible.posix.firewalld:
+    port: "9090/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+
+# ============================================================
+# GRAFANA
+# ============================================================
+
+- name: Ajouter le dépôt Grafana
+  ansible.builtin.copy:
+    dest: /etc/yum.repos.d/grafana.repo
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [grafana]
+      name=grafana
+      baseurl=https://rpm.grafana.com
+      repo_gpgcheck=1
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://rpm.grafana.com/gpg.key
+      sslverify=1
+      sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+
+- name: Installer Grafana
+  ansible.builtin.dnf:
+    name: grafana
+    state: present
+
+- name: Créer le répertoire provisioning datasources
+  ansible.builtin.file:
+    path: /etc/grafana/provisioning/datasources
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0750"
+
+- name: Configurer la datasource Prometheus
+  ansible.builtin.template:
+    src: grafana-datasource.yml.j2
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: grafana
+    group: grafana
+    mode: "0640"
+  notify: Redémarrer grafana
+
+- name: Activer et démarrer Grafana
+  ansible.builtin.systemd:
+    name: grafana-server
+    enabled: true
+    state: started
+
+- name: Ouvrir port 3000 dans firewalld
+  ansible.posix.firewalld:
+    port: "3000/tcp"
+    permanent: true
+    state: enabled
+    immediate: true

@@ -9,3 +9,5 @@ crash.log
 *.pem
 # Ansible
 ansible/inventory.ini
+.DS_Store
+teamrocket-monitoring/
