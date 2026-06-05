@@ -92,6 +92,55 @@
     immediate: true
 
 # ============================================================
+# DESACTIVER LES SERVICES ECS (AMI ECS-optimized = Docker + agent inutiles)
+# ============================================================
+
+- name: Arreter et desactiver les services ECS/Docker inutiles
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - amazon-ecs-init
+    - docker
+    - containerd
+  ignore_errors: true
+
+# ============================================================
+# SWAP (nécessaire sur t3.micro avant l'installation de Grafana)
+# ============================================================
+
+- name: Créer le fichier de swap (1 Go)
+  ansible.builtin.command:
+    cmd: dd if=/dev/zero of=/swapfile bs=128M count=8
+    creates: /swapfile
+
+- name: Définir les permissions du fichier de swap
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Initialiser le swap
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  changed_when: true
+  when: ansible_swaptotal_mb == 0
+
+- name: Activer le swap
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  ignore_errors: true
+  when: ansible_swaptotal_mb == 0
+
+- name: Rendre le swap persistant au reboot
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present
+
+# ============================================================
 # GRAFANA
 # ============================================================
 

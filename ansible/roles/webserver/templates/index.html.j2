@@ -197,7 +197,7 @@
           <tr>
             <td>ansible-master</td>
             <td>Ansible controller <span class="badge badge-blue">auto-run</span></td>
-            <td><span class="live" id="meta-local-ip">...</span></td>
+            <td>{{ hostvars['localhost']['ansible_default_ipv4']['address'] }}</td>
             <td>Private-web 10.0.2.0/24</td>
             <td><span class="badge badge-green">Online</span></td>
           </tr>

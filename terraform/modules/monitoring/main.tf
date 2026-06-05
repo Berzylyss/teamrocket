@@ -42,7 +42,11 @@ data "aws_ami" "al2023" {
   owners      = ["amazon"]
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["al2023-ami-2023*-kernel-*-x86_64"]
+  }
+  filter {
+    name   = "description"
+    values = ["Amazon Linux 2023 AMI *"]
   }
 }
 
@@ -54,11 +58,19 @@ resource "aws_security_group" "monitoring" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description     = "SSH depuis bastion"
+    description     = "SSH depuis bastion et Ansible master (VPC)"
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
     security_groups = [var.bastion_sg_id]
+  }
+
+  ingress {
+    description = "SSH depuis Ansible master (subnet prive)"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.2.0/24"]
   }
 
   ingress {

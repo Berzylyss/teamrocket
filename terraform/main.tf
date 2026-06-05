@@ -236,37 +236,6 @@ module "monitoring" {
   ftp_sg_id         = module.storage.ftp_sg_id
 }
 
-# ── Règles SSH least-privilege : Ansible master → web/ftp/monitoring ──────────
-resource "aws_security_group_rule" "ansible_to_web_ssh" {
-  type                     = "ingress"
-  from_port                = 22
-  to_port                  = 22
-  protocol                 = "tcp"
-  security_group_id        = module.web.web_sg_id
-  source_security_group_id = module.ansible.sg_id
-  description              = "SSH Ansible master vers serveurs web"
-}
-
-resource "aws_security_group_rule" "ansible_to_ftp_ssh" {
-  type                     = "ingress"
-  from_port                = 22
-  to_port                  = 22
-  protocol                 = "tcp"
-  security_group_id        = module.storage.ftp_sg_id
-  source_security_group_id = module.ansible.sg_id
-  description              = "SSH Ansible master vers serveur FTP"
-}
-
-resource "aws_security_group_rule" "ansible_to_monitoring_ssh" {
-  type                     = "ingress"
-  from_port                = 22
-  to_port                  = 22
-  protocol                 = "tcp"
-  security_group_id        = module.monitoring.sg_monitoring_id
-  source_security_group_id = module.ansible.sg_id
-  description              = "SSH Ansible master vers serveur monitoring"
-}
-
 # ── Ansible master (subnet privé web, accessible via bastion) ─────────────────
 # Créé après que tous les fichiers S3 existent
 module "ansible" {

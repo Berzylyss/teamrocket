@@ -1,4 +1,8 @@
 ---
+- name: Collecter les facts du controleur Ansible (IP locale pour le template HTML)
+  hosts: localhost
+  gather_facts: true
+
 - name: Configurer les serveurs web (nginx + page HTML)
   hosts: web
   become: true
