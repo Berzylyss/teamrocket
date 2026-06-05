@@ -1,10 +1,15 @@
 # Projet final — Infrastructure AWS automatisee & securisee (Terraform + Ansible)
 
 **Equipe Team Rocket** — Mastere Cybersecurite 4A - Groupe Team Rocket !
+
 Anelyse RIVIERE, alias Jessie (Cheffe du groupe)
+
 Corentin EYDOUX, alias James (Sous-fifre du cheffe)
+
 Jonathan JOLY, alias Miaouss (Il compte les pièces)
+
 Arnaud VIGIER, alias SMOGOGO (parce qu'il fume tout le temps)
+
 Thomas VIOLETTE, alias Qulbutoké (Ne sert à rien mais est drôle)
 
 
