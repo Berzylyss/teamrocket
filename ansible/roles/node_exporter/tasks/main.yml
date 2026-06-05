@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# Rôle node_exporter — agent de métriques système (port 9100)
+# À appliquer sur les hôtes web et ftp pour qu'ils soient scrapés par Prometheus
+# =============================================================================
+
+- name: Créer l'utilisateur système node_exporter
+  ansible.builtin.user:
+    name: node_exporter
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+
+- name: Télécharger node_exporter
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v1.8.1/node_exporter-1.8.1.linux-amd64.tar.gz"
+    dest: /tmp/node_exporter.tar.gz
+    mode: "0644"
+
+- name: Extraire node_exporter
+  ansible.builtin.unarchive:
+    src: /tmp/node_exporter.tar.gz
+    dest: /tmp/
+    remote_src: true
+    creates: /tmp/node_exporter-1.8.1.linux-amd64
+
+- name: Installer le binaire node_exporter
+  ansible.builtin.copy:
+    src: /tmp/node_exporter-1.8.1.linux-amd64/node_exporter
+    dest: /usr/local/bin/node_exporter
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  notify: Redémarrer node_exporter
+
+- name: Déployer le service systemd node_exporter
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Node Exporter
+      After=network.target
+
+      [Service]
+      User=node_exporter
+      Group=node_exporter
+      Type=simple
+      ExecStart=/usr/local/bin/node_exporter --web.listen-address=0.0.0.0:9100
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - Recharger systemd
+    - Redémarrer node_exporter
+
+- name: Activer et démarrer node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Ouvrir port 9100 dans firewalld
+  ansible.posix.firewalld:
+    port: "9100/tcp"
+    permanent: true
+    state: enabled
+    immediate: true

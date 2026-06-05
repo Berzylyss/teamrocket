@@ -1,0 +1,5 @@
+---
+ftp_user: ftpuser
+ftp_share_path: /srv/ftp/rocket-archive
+ftp_pasv_min_port: 21100
+ftp_pasv_max_port: 21110

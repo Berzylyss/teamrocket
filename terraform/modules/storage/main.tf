@@ -68,11 +68,11 @@ resource "aws_security_group" "ftp" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "SSH depuis bastion"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    description     = "SSH depuis bastion"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [var.bastion_sg_id]
   }
 
   ingress {
@@ -101,7 +101,14 @@ resource "aws_security_group" "ftp" {
   tags = { Name = "${var.project}-ftp-sg" }
 }
 
-# ── EC2 FTP (vsftpd) ──────────────────────────────────────────────────────────
+# ── Mot de passe FTP généré (jamais en clair dans le code) ───────────────────
+resource "random_password" "ftp_user" {
+  length           = 16
+  special          = true
+  override_special = "#$-_=+"
+}
+
+# ── EC2 FTP — user_data minimal, vsftpd configuré intégralement par Ansible ──
 resource "aws_instance" "ftp" {
   ami                    = data.aws_ami.al2023.id
   instance_type          = var.instance_type
@@ -114,33 +121,6 @@ resource "aws_instance" "ftp" {
   user_data = <<-EOF
     #!/bin/bash
     hostnamectl set-hostname ftp-01
-    dnf update -y
-    dnf install -y vsftpd
-
-    cat > /etc/vsftpd/vsftpd.conf <<'VSFTPD'
-    anonymous_enable=NO
-    local_enable=YES
-    write_enable=YES
-    local_umask=022
-    dirmessage_enable=YES
-    xferlog_enable=YES
-    connect_from_port_20=YES
-    listen=YES
-    pam_service_name=vsftpd
-    userlist_enable=YES
-    pasv_enable=YES
-    pasv_min_port=21100
-    pasv_max_port=21110
-    local_root=/srv/ftp
-    VSFTPD
-
-    useradd -m ftpuser
-    echo "ftpuser:RocketFTP2024!" | chpasswd
-    mkdir -p /srv/ftp/rocket-archive
-    echo "CLASSIFIED" > /srv/ftp/rocket-archive/README_CLASSIFIED.txt
-    chown -R ftpuser:ftpuser /srv/ftp
-
-    systemctl enable --now vsftpd
   EOF
 
   tags = { Name = "${var.project}-ftp" }
