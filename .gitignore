@@ -2,7 +2,7 @@
 **/.terraform/*
 *.tfstate
 *.tfstate.*
-*.terraform.tfvar
+*.terraform.tfvars
 crash.log
 .terraform.lock.hcl
 # Cles et secrets (NE JAMAIS COMMITER)
